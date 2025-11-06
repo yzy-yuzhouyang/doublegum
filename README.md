@@ -2,9 +2,18 @@
 
 Code for *Double Gumbel Q-Learning*
 
+[[.pdf]](https://proceedings.neurips.cc/paper_files/paper/2023/file/07956d40074d6523bad11112b3225c6e-Paper-Conference.pdf)
+[[Reviews]](https://openreview.net/forum?id=UdaTyy0BNB)
+[[Poster (.png)]](https://nips.cc/media/PosterPDFs/NeurIPS%202023/71497.png)
+[[5-min talk]](https://slideslive.com/39009623/double-gumbel-qlearning)
+[[1-hour seminar]](https://www.youtube.com/watch?v=GMNtHLA3bAE)
+[[Errata]](https://gist.github.com/dyth/0abd5c5b87184144854a431437de7d44)
+
 Data (5.4 MB): [https://drive.google.com/file/d/12wyYZ92bvVdkEQIHms8mVR5zYJZue-cd/view?usp=sharing](https://drive.google.com/file/d/12wyYZ92bvVdkEQIHms8mVR5zYJZue-cd/view?usp=sharing)
 
 Logs (4.21 GB): [https://drive.google.com/file/d/1LpR3lrKUx-qTaCrI4YViAjc0QA5kb8P2/view?usp=sharing](https://drive.google.com/file/d/1LpR3lrKUx-qTaCrI4YViAjc0QA5kb8P2/view?usp=sharing)
+
+Due to an accident in saving data, the logs are incomplete and do not contain data for Figs. 2 and 7.
 
 
 ## Installation
@@ -93,7 +102,9 @@ Policies we created/modified as additional benchmarks were:
 ## Graphs and Tables
 
 Reproduced using raw data from `Data` and `Logs`.
-`Logs` (4.21 GB) contains data for Section 4 (Figures 1 and 2) and Appendix E.2 (Figures 6 and 7), while `Data` (5.4 MB) contains benchmark results for DoubleGum and baselines used in all other graphs, results and tables.
+`Logs` (4.21 GB) contains data for Figs. 1 and 6, while `Data` (5.4 MB) contains benchmark results for DoubleGum and baselines used in all other graphs, results and tables.
+Due to an accident in saving data, the logs are incomplete and do not contain data for Figs. 2 and 7.
+
 
 Ran by
 ```commandline
