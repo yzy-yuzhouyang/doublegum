@@ -44,19 +44,19 @@ def parse_args():
 
 def parser_cont():
     parser = parse_args()
-    parser.add_argument("--policy",           default="DDPG")
+    parser.add_argument("--policy",           default="DoubleGum")
     parser.add_argument("--env",              default="cheetah-run")         # gym environment name
 
     # evaluation
-    parser.add_argument("--start-timesteps",  default=1e4,        type=int)       # Time steps initial random policy is used TD3 (25e3)
-    parser.add_argument("--max-timesteps",    default=1e6,        type=int)       # Max time steps to run environment
-    parser.add_argument("--eval-freq",        default=1e4,        type=int)
+    parser.add_argument("--start-timesteps",  default=2e5,        type=int)       # Time steps initial random policy is used TD3 (25e3)
+    parser.add_argument("--max-timesteps",    default=4e7,        type=int)       # Max time steps to run environment
+    parser.add_argument("--eval-freq",        default=2e5,        type=int)
 
     # architectural details
     parser.add_argument("--actor-lr",         default=3e-4,       type=float)
     parser.add_argument("--critic-lr",        default=3e-4,       type=float)
-    parser.add_argument("--actor",            default=[256, 256], type=int,       nargs="+")
-    parser.add_argument("--critic",           default=[256, 256], type=int,       nargs="+")
+    parser.add_argument("--actor",            default=[256, 256, 256], type=int,       nargs="+")
+    parser.add_argument("--critic",           default=[256, 256, 256], type=int,       nargs="+")
     parser.add_argument("--actor-groups",     default=16,         type=int)
     parser.add_argument("--critic-groups",    default=16,         type=int)
     parser.add_argument("--critic-sn",        default=False,      type=type_bool)
@@ -64,7 +64,7 @@ def parser_cont():
     parser.add_argument("--actor-tau",        default=1.,         type=float)     # Actor target network update rate
 
     # pessimism factor for DoubleGum
-    parser.add_argument("--c",                default=0.0,        type=float)
+    parser.add_argument("--c",                default=-0.1,        type=float)
 
     # Temperature of XQL
     parser.add_argument("--beta",             default=3.0,        type=float)

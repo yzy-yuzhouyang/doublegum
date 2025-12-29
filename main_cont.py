@@ -96,6 +96,9 @@ def train(args, policy, evaluations, env, eval_env, replay_buffer, episode_num,
     episode_len         = 0
     done_timesteps      = 0
 
+    # 硬编码：每 20 步触发一次逻辑
+    update_every_steps = 20
+
     if args.get_random:
         eval_episodes = 1000
         avg_reward = 0.
@@ -104,7 +107,6 @@ def train(args, policy, evaluations, env, eval_env, replay_buffer, episode_num,
             done = False
             while not done:
                 action = env.action_space.sample()
-                # action = policy.select_action(np.array(state))
                 state, reward, term, trunc, _ = eval_env.step(action)
                 done = term or trunc
                 avg_reward += reward
@@ -150,11 +152,16 @@ def train(args, policy, evaluations, env, eval_env, replay_buffer, episode_num,
 
         state = next_state
 
-        # Train agent after collecting sufficient data
-        if t >= args.start_timesteps:
+        # ==========================================
+        # 修改开始：每20步，只训练一次
+        # ==========================================
+        if t >= args.start_timesteps and (t + 1) % update_every_steps == 0:
+            
+            # 只训练一次 (UTD = 1/20 = 0.05)
             actor_info, critic_info = policy.train(replay_buffer, args.replay_ratio * args.batch_size)
 
-            if (t+1) % args.log_freq == 0:
+            # 日志记录必须放在这里，因为 actor_info 只有在训练发生的这一步才存在
+            if (t + 1) % args.log_freq == 0:
                 critic_boards = [
                     'grads', 'params',
                     # 'online_l2', 'target_l2', #'online_std', 'target_std', 'coadapt', 'coadapt_disc', 'diverge'
@@ -172,6 +179,9 @@ def train(args, policy, evaluations, env, eval_env, replay_buffer, episode_num,
 
                 tboard_logging.log_to_tensorboard(writer, critic_info, t, 'critic')
                 tboard_logging.log_to_tensorboard(writer, actor_info, t, 'actor')
+        # ==========================================
+        # 修改结束
+        # ==========================================
 
         if done:
             replay_buffer.on_episode_end()
@@ -179,7 +189,8 @@ def train(args, policy, evaluations, env, eval_env, replay_buffer, episode_num,
             writer.add_scalar(f'returns/train'         , episode_return     , t)
             writer.add_scalar(f'estimation/observed'   , episode_disc_return, episode_num)
             writer.add_scalar(f'estimation/episode_len', episode_len        , episode_num)
-            print(f"Total T: {t+1} Episode Num: {episode_num+1} Episode T: {episode_len} Reward: {episode_return:.3f}")
+            if t%1e4 == 0:
+                print(f"Total T: {t+1} Episode Num: {episode_num+1} Episode T: {episode_len} Reward: {episode_return:.3f}")
             # Reset environment
             state, _            = env.reset()
             episode_return      = 0
@@ -196,7 +207,7 @@ def train(args, policy, evaluations, env, eval_env, replay_buffer, episode_num,
                 ds = [policy.log_td_loss(replay_buffer) for _ in range(10)]
                 d  = {}
                 for k in ds[0].keys():
-                    d[k] = np.concatenate(list(d[k] for d in ds)) # from https://stackoverflow.com/a/5946359
+                    d[k] = np.concatenate(list(d[k] for d in ds)) 
                 np.save(f"{td_path}/{t}.npy", d)
 
             if args.video and ((t + 1) % args.video_freq == 0):

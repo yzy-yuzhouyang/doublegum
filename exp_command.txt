@@ -1,0 +1,1 @@
+python /home/yuzhouyang/code/doublegum/main_cont.py --env Humanoid-v3 --seed 12345

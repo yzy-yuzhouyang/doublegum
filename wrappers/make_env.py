@@ -1,64 +1,10 @@
-"""
-This is adapted from https://github.com/ikostrikov/jaxrl
-
-Robosuite adapted from
-https://robosuite.ai/docs/algorithms/benchmarking.html
-https://github.com/ARISE-Initiative/robosuite-benchmark/util/rlkit_utils.py#L31 for suite.make command
-https://github.com/ARISE-Initiative/robosuite-benchmark/util/arguments.py#L23 for the suite make args
-"""
 import gymnasium as gym
-import metaworld
-import random
-import robosuite as suite
-from robosuite.controllers import load_controller_config
 from gymnasium.wrappers import RescaleAction
 from gymnasium.wrappers.pixel_observation import PixelObservationWrapper
 from typing import Optional
 
+# 假设你的 wrappers 文件夹下有这些工具类
 import wrappers
-
-
-def make_robosuite(env_name):
-    env_name = env_name.split('_')[1]
-
-    # robots = components[1].split('-')
-
-    # components = env_name.split('_')
-
-    # env_name   = '_'.join(components[4:])
-
-    # robots     = components[1].split('-')
-
-    # controller                           = '_'.join(components[2:4]).split('-')
-    # controller_configs                   = load_controller_config(default_controller=controller[0])
-    # controller_configs['impedance_mode'] = controller[1]
-
-    env = wrappers.OldToNewGym(
-        wrappers.RoboSuiteWrapper(
-            suite.make(
-                env_name=env_name,
-                # robots=robots,
-                robots='Panda',
-                horizon=500,
-                control_freq=20,  # Hz
-                reward_scale=1.0,
-                hard_reset=True,
-                ignore_done=True,
-
-                has_renderer=False,
-                has_offscreen_renderer=False,
-                use_object_obs=True,
-                use_camera_obs=False,
-                reward_shaping=True,
-                controller_configs=load_controller_config(default_controller='OSC_POSE'),
-                # controller_configs=load_controller_config(default_controller='JOINT_VELOCITY'),
-                # controller_configs=controller_configs,
-            )
-        ),
-        duration=500
-    )
-    return env
-
 
 def make_env(env_name: str,
              seed: int,
@@ -73,66 +19,91 @@ def make_env(env_name: str,
              gray_scale: bool = False,
              flatten: bool = True,
              terminate_when_unhealthy: bool = True,
-             action_concat: int = 1,
+             action_concat: int = 1, # 保留参数接口以免报错，虽然逻辑可能被精简
              obs_concat: int = 1,
              continuous: bool = True,
              ) -> gym.Env:
 
-    # Check if the env is in gym.
+    # 1. 获取当前 Gymnasium 注册的环境列表
     env_ids = list(gym.envs.registry.keys())
 
-    if env_name in env_ids:
-        env = gym.make(env_name)
-        # env = gym.make(env_name, terminate_when_unhealthy=False)
-        save_folder = None
+    # 2. 定义 MuJoCo Gym 环境白名单
+    # 只要名字在列表里，或者包含 'Humanoid-v' 等特征，优先走 Gym 逻辑
+    gym_mujoco_envs = [
+        "Humanoid-v2", "Humanoid-v3", "Humanoid-v4",
+        "Ant-v2", "Ant-v3", "Ant-v4",
+        "HalfCheetah-v4", "Hopper-v4", "Walker2d-v4",
+        "Swimmer-v4"
+    ]
 
-    elif 'Navigation' in env_name:
-        env = wrappers.NavigationND(env_name)
+    # ================= 核心逻辑：Gym vs DMC =================
 
-    elif 'metaworld' in env_name:
-        env_name = '_'.join(env_name.split('_')[1:])
-        mt1 = metaworld.MT1(env_name, seed=0)
-        env = mt1.train_classes[env_name]()
-        task = random.choice(mt1.train_tasks)
-        env.set_task(task)
-        env = wrappers.OldToNewGym(env, duration=env.max_path_length)
-        save_folder = None
+    # 判定逻辑：如果在 Gym 注册表中，或者是我们熟知的 MuJoCo 环境名，则用 Gym 加载
+    is_gym_env = (env_name in env_ids) or \
+                 (env_name in gym_mujoco_envs)
 
-    elif 'robosuite' in env_name:
-        env = make_robosuite(env_name)
+    if is_gym_env:
+        try:
+            print(f"Loading Gym MuJoCo environment: {env_name}")
+            env = gym.make(env_name)
+        except (gym.error.Error, KeyError):
+            # 自动降级/升级策略：处理 v3/v4 版本不匹配问题
+            if "v3" in env_name:
+                alt_name = env_name.replace("v3", "v4")
+                print(f"[Warning] {env_name} not found in registry. Trying fallback to {alt_name}.")
+                env = gym.make(alt_name)
+            elif "v4" in env_name:
+                alt_name = env_name.replace("v4", "v3")
+                print(f"[Warning] {env_name} not found in registry. Trying fallback to {alt_name}.")
+                env = gym.make(alt_name)
+            else:
+                raise
+
         save_folder = None
 
     else:
-        domain_name, task_name = env_name.split('-')
-        env = wrappers.DMCEnv(domain_name=domain_name, task_name=task_name, task_kwargs={'random': seed})
+        # 否则，默认为 DeepMind Control Suite (DMC)
+        print(f"Loading DMC environment: {env_name}")
+        if '-' in env_name:
+            domain_name, task_name = env_name.split('-')
+        else:
+            # 简单的容错，假设只有一个名字时是 domain，默认 task 为 walk
+            domain_name = env_name
+            task_name = 'walk'
+            
+        env = wrappers.DMCEnv(
+            domain_name=domain_name, 
+            task_name=task_name, 
+            task_kwargs={'random': seed}
+        )
 
+    # ================= 通用 Wrappers 处理 =================
+
+    # 1. 展平观测空间 (DMC 返回 Dict, Gym 有时返回 Dict)
     if flatten and isinstance(env.observation_space, gym.spaces.Dict):
         env = gym.wrappers.FlattenObservation(env)
         env = wrappers.FlattenAction(env)
 
-    # if add_episode_monitor:
-    #     env = wrappers.EpisodeMonitor(env)
+    # 2. 精度统一 (确保 Gym 环境也是 float32)
+    if isinstance(env.observation_space, gym.spaces.Box):
+         env = wrappers.SinglePrecision(env)
 
+    # 3. 动作重复 (Frame Skip)
     if action_repeat > 1:
         env = wrappers.RepeatAction(env, action_repeat)
 
+    # 4. 动作范围归一化 [-1, 1]
     if continuous:
         env = RescaleAction(env, -1.0, 1.0)
 
-    # if action_concat > 1:
-    #     env = wrappers.ConcatAction(env, action_concat)
-    # if obs_concat > 1:
-    #     env = wrappers.ConcatObs(env, obs_concat)
-
-    # if save_folder is not None:
-    #     env = wrappers.VideoRecorder(env, save_folder=save_folder)
-
-    # TODO: should probably move this inside DMC
+    # 5. 像素观测处理
     if from_pixels:
-        if env_name in env_ids:
+        if is_gym_env:
             camera_id = 0
         else:
-            camera_id = 2 if domain_name == 'quadruped' else 0
+            # DMC Quadruped 特殊处理
+            camera_id = 2 if 'quadruped' in env_name else 0
+            
         env = PixelObservationWrapper(env,
                                       pixels_only=pixels_only,
                                       render_kwargs={
@@ -145,15 +116,16 @@ def make_env(env_name: str,
         env = wrappers.TakeKey(env, take_key='pixels')
         if gray_scale:
             env = wrappers.RGB2Gray(env)
-    else:
-        env = wrappers.SinglePrecision(env)
 
+    # 6. 帧堆叠
     if frame_stack > 1:
         env = wrappers.FrameStack(env, num_stack=frame_stack)
 
+    # 7. Sticky Action (可选)
     if sticky:
         env = wrappers.StickyActionEnv(env)
 
+    # 8. 设置随机种子
     env.reset(seed=seed)
     env.action_space.seed(seed)
     env.observation_space.seed(seed)

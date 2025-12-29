@@ -1,16 +1,16 @@
 ## check all envs work
-#for policy in DoubleGum
-#do
-#  for env in BipedalWalker-v3 cheetah-run Ant-v4 metaworld_button-press-v2
-#  do
-#    eval "\
-#    python main_cont.py --seed -1 \
-#    --env ${env} \
-#    --policy ${policy} \
-#    --max-timesteps 100 --start-timesteps 10 --folder testdelete \
-#    "
-#  done
-#done
+for policy in DoubleGum
+do
+ for env in dog-run Ant-v4
+ do
+   eval "\
+   python main_cont.py --seed -1 \
+   --env ${env} \
+   --policy ${policy} \
+   --max-timesteps 100 --start-timesteps 10 --folder testdelete \
+   "
+ done
+done
 #
 ## check all baselines work
 #for policy in MoG-DDPG DDPG TD3 QR-DDPG SAC XQL IQL SACLite
@@ -26,18 +26,18 @@
 #  done
 #done
 
-for policy in DoubleGum DDQN DQN DuellingDDQN DuellingDQN
-do
-  for env in CartPole-v1
-  do
-    eval "\
-    python main_disc.py --seed -1 \
-    --env ${env} \
-    --policy ${policy} \
-    --max-timesteps 100 --start-timesteps 10 --folder testdelete \
-    "
-  done
-done
+# for policy in DoubleGum DDQN DQN DuellingDDQN DuellingDQN
+# do
+#   for env in CartPole-v1
+#   do
+#     eval "\
+#     python main_disc.py --seed -1 \
+#     --env ${env} \
+#     --policy ${policy} \
+#     --max-timesteps 100 --start-timesteps 10 --folder testdelete \
+#     "
+#   done
+# done
 
 
 #BipedalWalker-v3 BipedalWalkerHardcore-v3 \
